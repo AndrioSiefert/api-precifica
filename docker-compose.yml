@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: precifica-minio
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # S3 endpoint
+      - "9001:9001" # Console web
+    volumes:
+      - minio_data:/data
+
+volumes:
+  minio_data:
