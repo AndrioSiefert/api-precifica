@@ -28,7 +28,7 @@ export class ItemService {
     private readonly pricingSettings: PricingSettingsService,
   ) {}
 
-  private applyPricingMode(item: ItemEntity, updatedField?: 'markup' | 'sale') {
+  applyPricingMode(item: ItemEntity, updatedField?: 'markup' | 'sale') {
     if (updatedField === 'markup') {
       item.saleUnitManual = null;
       return;
@@ -42,6 +42,7 @@ export class ItemService {
       item.markupOverridePercent = null;
     }
   }
+
 
   private computePricing(
     item: ItemEntity,
@@ -99,7 +100,7 @@ export class ItemService {
     };
   }
 
-  private async toResponse(item: ItemEntity) {
+  async toResponse(item: ItemEntity) {
     const defaultMarkupPercent =
       await this.pricingSettings.getDefaultMarkupPercent();
 
@@ -122,6 +123,8 @@ export class ItemService {
       markupOverridePercent: dto.markupOverridePercent ?? null,
       saleUnitManual: dto.saleUnitManual ?? null,
       purchasedAt: dto.purchasedAt ?? new Date(),
+      batchId: null,
+      captureId: null,
       photoKey: null,
       photoMime: null,
     });

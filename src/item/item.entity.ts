@@ -29,6 +29,12 @@ export class ItemEntity {
   @Column({ type: 'int' })
   quantity: number;
 
+  @Column({ type: 'uuid', nullable: true })
+  batchId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  captureId: string | null;
+
   @Column({ type: 'text', nullable: true })
   photoKey: string | null;
 
