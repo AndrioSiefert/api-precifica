@@ -21,11 +21,10 @@ export class PurchaseReportService {
 
     const items = await this.itemRepo.findByBatchId(batchId);
     const itemResponses = await Promise.all(
-      items.map((item) => this.itemService.toResponse(item)),
+      items.map((item) => this.itemService.toResponse(item, { batch, batchDefaultMarkup: batch.defaultMarkupPercent ?? null })),
     );
 
-    const defaultMarkupPercent =
-      itemResponses[0]?.pricing?.defaultMarkupPercent ?? null;
+    const defaultMarkupPercent = batch.defaultMarkupPercent ?? itemResponses[0]?.pricing?.defaultMarkupPercent ?? null;
 
     const rows = itemResponses.map((r) => {
       const qty = r.quantity ?? 0;
@@ -81,6 +80,7 @@ export class PurchaseReportService {
         purchasedOn: batch.purchasedOn,
         title: batch.title,
         notes: batch.notes,
+        defaultMarkupPercent: batch.defaultMarkupPercent ?? null,
       },
       summary: {
         itemsCount,

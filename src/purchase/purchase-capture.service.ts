@@ -33,11 +33,11 @@ export class PurchaseCaptureService {
     if (!photo) throw new BadRequestException('Envie a foto no campo "photo"');
 
     if (!photo.mimetype?.startsWith('image/')) {
-      throw new BadRequestException('Arquivo inválido: envie uma imagem');
+      throw new BadRequestException('Arquivo inv\u00e1lido: envie uma imagem');
     }
 
     const batch = await this.batchRepo.findById(batchId);
-    if (!batch) throw new NotFoundException('Compra (lote) não encontrada');
+    if (!batch) throw new NotFoundException('Compra (lote) n\u00e3o encontrada');
 
     const captureId = randomUUID();
     const key = `purchase-batches/${batchId}/captures/${captureId}`;
@@ -59,7 +59,7 @@ export class PurchaseCaptureService {
 
   async listByBatch(batchId: string) {
     const batch = await this.batchRepo.findById(batchId);
-    if (!batch) throw new NotFoundException('Compra (lote) não encontrada');
+    if (!batch) throw new NotFoundException('Compra (lote) n\u00e3o encontrada');
 
     const captures = await this.captureRepo.findByBatchId(batchId);
     return Promise.all(captures.map((c) => this.toResponse(c)));
@@ -67,18 +67,18 @@ export class PurchaseCaptureService {
 
   async finalizeCapture(captureId: string, dto: FinalizePurchaseCaptureDto) {
     const capture = await this.captureRepo.findById(captureId);
-    if (!capture) throw new NotFoundException('Foto (capture) não encontrada');
+    if (!capture) throw new NotFoundException('Foto (capture) n\u00e3o encontrada');
 
     const batch = await this.batchRepo.findById(capture.batchId);
-    if (!batch) throw new NotFoundException('Compra (lote) não encontrada');
+    if (!batch) throw new NotFoundException('Compra (lote) n\u00e3o encontrada');
 
     const purchasedAt = new Date(`${batch.purchasedOn}T12:00:00.000Z`);
 
-    // Se já finalizada, atualiza o item associado em vez de bloquear
+
     if (capture.status === 'finalized' && capture.itemId) {
       const existingItem = await this.itemRepo.findById(capture.itemId);
       if (!existingItem) {
-        throw new ConflictException('Essa foto está finalizada, mas o item não foi encontrado');
+        throw new ConflictException('Essa foto est\u00e1 finalizada, mas o item n\u00e3o foi encontrado');
       }
 
       existingItem.name = dto.name;
@@ -94,12 +94,12 @@ export class PurchaseCaptureService {
 
       return {
         capture: await this.toResponse(capture),
-        item: await this.itemService.toResponse(savedItem),
+        item: await this.itemService.toResponse(savedItem, { batch, batchDefaultMarkup: batch.defaultMarkupPercent ?? null }),
       };
     }
 
     if (capture.status === 'finalized') {
-      throw new ConflictException('Essa foto já foi finalizada');
+      throw new ConflictException('Essa foto j\u00e1 foi finalizada');
     }
 
     const item = this.itemRepo.create({
@@ -126,7 +126,38 @@ export class PurchaseCaptureService {
 
     return {
       capture: await this.toResponse(savedCapture),
-      item: await this.itemService.toResponse(savedItem),
+      item: await this.itemService.toResponse(savedItem, { batch, batchDefaultMarkup: batch.defaultMarkupPercent ?? null }),
     };
+  }
+
+  async deleteCapture(captureId: string) {
+    const capture = await this.captureRepo.findById(captureId);
+    if (!capture) throw new NotFoundException('Foto (capture) n\u00e3o encontrada');
+
+    const processed = new Set<string>();
+
+    if (capture.itemId) {
+      try {
+        const item = await this.itemRepo.findById(capture.itemId);
+        if (item?.photoKey && !processed.has(item.photoKey)) {
+          try {
+            await this.minio.remove(item.photoKey);
+            processed.add(item.photoKey);
+          } catch {}
+        }
+        if (item) {
+          await this.itemRepo.delete(item.id);
+        }
+      } catch {}
+    }
+
+    if (capture.photoKey && !processed.has(capture.photoKey)) {
+      try {
+        await this.minio.remove(capture.photoKey);
+      } catch {}
+    }
+
+    await this.captureRepo.delete(captureId);
+    return { deleted: true };
   }
 }

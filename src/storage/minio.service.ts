@@ -34,4 +34,9 @@ export class MinioService {
     await this.ensureBucket();
     return this.client.presignedGetObject(this.bucket, key, expiresSeconds);
   }
-}
+
+  async remove(key: string): Promise<void> {
+    await this.ensureBucket();
+    await this.client.removeObject(this.bucket, key);
+  }}
+

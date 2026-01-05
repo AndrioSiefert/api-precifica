@@ -28,4 +28,8 @@ export class PurchaseCaptureRepository {
   findById(id: string) {
     return this.repo.findOne({ where: { id } });
   }
+
+  delete(id: string){
+    return this.repo.delete({id});
+  }
 }

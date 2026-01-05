@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from "@nestjs/common";
 import { PurchaseBatchService } from "./purchase-batch.service";
 import { CreatePurchaseBatchDto } from "./dto/create-purchase-batch.dto";
 import { UpdatePurchaseBatchDto } from "./dto/update-purchase-batch.dto";
@@ -30,5 +30,10 @@ export class PurchaseBatchController {
         @Body() dto: UpdatePurchaseBatchDto
     ) { 
         return this.service.update(id, dto);
+    }
+
+    @Delete(':id')
+    remove(@Param('id', new ParseUUIDPipe()) id: string){
+        return this.service.delete(id);
     }
 }

@@ -6,6 +6,10 @@ import { CreateItemDto } from './dto/createItem.dto';
 import { UpdateItemDto } from './dto/updateItem.dto';
 import { ItemEntity } from './item.entity';
 import { ItemRepository } from './item.repository';
+import { DataSource, In } from 'typeorm';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { PurchaseBatchEntity } from '../purchase/purchase-batch.entity';
+import { PurchaseCaptureEntity } from '../purchase/purchase-capture.entity';
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -26,6 +30,7 @@ export class ItemService {
     private readonly itemRepo: ItemRepository,
     private readonly minio: MinioService,
     private readonly pricingSettings: PricingSettingsService,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   applyPricingMode(item: ItemEntity, updatedField?: 'markup' | 'sale') {
@@ -42,7 +47,6 @@ export class ItemService {
       item.markupOverridePercent = null;
     }
   }
-
 
   private computePricing(
     item: ItemEntity,
@@ -100,9 +104,22 @@ export class ItemService {
     };
   }
 
-  async toResponse(item: ItemEntity) {
+  private async findBatch(batchId: string | null) {
+    if (!batchId) return null;
+    return this.dataSource
+      .getRepository(PurchaseBatchEntity)
+      .findOne({ where: { id: batchId } });
+  }
+
+  async toResponse(
+    item: ItemEntity,
+    opts?: { batch?: PurchaseBatchEntity | null; batchDefaultMarkup?: number | null },
+  ) {
+    const batch = opts?.batch !== undefined ? opts.batch : await this.findBatch(item.batchId ?? null);
     const defaultMarkupPercent =
-      await this.pricingSettings.getDefaultMarkupPercent();
+      opts?.batchDefaultMarkup !== undefined
+        ? opts.batchDefaultMarkup
+        : batch?.defaultMarkupPercent ?? (await this.pricingSettings.getDefaultMarkupPercent());
 
     const photoUrl = item.photoKey
       ? await this.minio.getPresignedUrl(item.photoKey)
@@ -111,6 +128,15 @@ export class ItemService {
     return {
       ...item,
       photoUrl,
+      batch: batch
+        ? {
+            id: batch.id,
+            purchasedOn: batch.purchasedOn,
+            title: batch.title,
+            notes: batch.notes,
+            defaultMarkupPercent: batch.defaultMarkupPercent ?? null,
+          }
+        : null,
       pricing: this.computePricing(item, defaultMarkupPercent),
     };
   }
@@ -123,7 +149,7 @@ export class ItemService {
       markupOverridePercent: dto.markupOverridePercent ?? null,
       saleUnitManual: dto.saleUnitManual ?? null,
       purchasedAt: dto.purchasedAt ?? new Date(),
-      batchId: null,
+      batchId: dto.batchId ?? null,
       captureId: null,
       photoKey: null,
       photoMime: null,
@@ -144,17 +170,28 @@ export class ItemService {
 
   async findAll() {
     const items = await this.itemRepo.findAll();
-    return Promise.all(items.map((i) => this.toResponse(i)));
+    const batchIds = Array.from(new Set(items.map((i) => i.batchId).filter(Boolean))) as string[];
+    const batches = batchIds.length
+      ? await this.dataSource
+          .getRepository(PurchaseBatchEntity)
+          .findBy({ id: In(batchIds) })
+      : [];
+    const batchMap = new Map(batches.map((b) => [b.id, b] as const));
+
+    return Promise.all(
+      items.map((i) => this.toResponse(i, { batch: i.batchId ? batchMap.get(i.batchId) ?? null : null })),
+    );
   }
 
   async updateItem(id: string, dto: UpdateItemDto) {
     const item = await this.itemRepo.findById(id);
-    if (!item) throw new NotFoundException('Item não encontrado');
+    if (!item) throw new NotFoundException('Item n\u00e3o encontrado');
 
     if (dto.name !== undefined) item.name = dto.name;
     if (dto.costUnit !== undefined) item.costUnit = dto.costUnit;
     if (dto.quantity !== undefined) item.quantity = dto.quantity;
     if (dto.purchasedAt !== undefined) item.purchasedAt = dto.purchasedAt;
+    if (dto.batchId !== undefined) item.batchId = dto.batchId ?? null;
 
     if (dto.markupOverridePercent !== undefined) {
       item.markupOverridePercent = dto.markupOverridePercent ?? null;
@@ -171,12 +208,52 @@ export class ItemService {
 
   async resetPricing(id: string) {
     const item = await this.itemRepo.findById(id);
-    if (!item) throw new NotFoundException('Item não encontrado');
+    if (!item) throw new NotFoundException('Item n\u00e3o encontrado');
 
     item.saleUnitManual = null;
     item.markupOverridePercent = null;
 
     const saved = await this.itemRepo.save(item);
     return this.toResponse(saved);
+  }
+
+  async deleteItem(id: string) {
+    const item = await this.itemRepo.findById(id);
+    if (!item) throw new NotFoundException('Item n\u00e3o encontrado');
+
+    const processed = new Set<string>();
+
+    if (item.photoKey) {
+      try {
+        await this.minio.remove(item.photoKey as string);
+        processed.add(item.photoKey);
+      } catch {}
+    }
+
+    if (item.captureId) {
+      const capRepo = this.dataSource.getRepository(PurchaseCaptureEntity);
+      const capture = await capRepo.findOne({ where: { id: item.captureId } });
+      if (capture?.photoKey && !processed.has(capture.photoKey)) {
+        try {
+          await this.minio.remove(capture.photoKey);
+          processed.add(capture.photoKey);
+        } catch {}
+      }
+      if (capture) {
+        await capRepo.delete(capture.id);
+      } else {
+        await capRepo.delete(item.captureId);
+      }
+    } else {
+      await this.dataSource
+        .createQueryBuilder()
+        .update('purchase_captures')
+        .set({ status: 'draft', itemId: null })
+        .where('"itemId" = :id', { id })
+        .execute();
+    }
+
+    await this.itemRepo.delete(id);
+    return { deleted: true };
   }
 }

@@ -1,4 +1,5 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsNumber, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdatePurchaseBatchDto {
   @IsOptional()
@@ -12,4 +13,10 @@ export class UpdatePurchaseBatchDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @Type(() => Number)
+  @IsNumber()
+  defaultMarkupPercent?: number | null;
 }

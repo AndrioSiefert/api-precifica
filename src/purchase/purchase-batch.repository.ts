@@ -29,4 +29,8 @@ export class PurchaseBatchRepository {
             where: {id}
         })
     }
+
+    delete(id: string){
+        return this.repo.delete({id});
+    }
 }

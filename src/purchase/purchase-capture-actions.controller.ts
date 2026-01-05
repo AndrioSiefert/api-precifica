@@ -1,4 +1,4 @@
-import { Body, Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { PurchaseCaptureService } from './purchase-capture.service';
 import { FinalizePurchaseCaptureDto } from './dto/finalize-purchase-capture.dto';
 
@@ -12,5 +12,10 @@ export class PurchaseCaptureActionsController {
     @Body() dto: FinalizePurchaseCaptureDto,
   ) {
     return this.service.finalizeCapture(id, dto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.service.deleteCapture(id);
   }
 }

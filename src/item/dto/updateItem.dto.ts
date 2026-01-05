@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -46,4 +47,8 @@ export class UpdateItemDto {
   @Type(() => Date)
   @IsDate()
   purchasedAt?: Date;
+
+  @IsOptional()
+  @IsUUID()
+  batchId?: string | null;
 }

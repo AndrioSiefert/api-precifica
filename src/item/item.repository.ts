@@ -32,4 +32,8 @@ export class ItemRepository {
       order: {createdAt: 'ASC'}
     })
   }
+
+  delete(id: string){
+    return this.repo.delete({id});
+  }
 }

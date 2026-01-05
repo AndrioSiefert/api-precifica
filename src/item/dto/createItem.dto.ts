@@ -7,6 +7,7 @@ import {
   Min,
   IsDate,
   IsIn,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -45,4 +46,8 @@ export class CreateItemDto {
   @Type(() => Date)
   @IsDate()
   purchasedAt?: Date;
+
+  @IsOptional()
+  @IsUUID()
+  batchId?: string | null;
 }

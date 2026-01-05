@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -49,5 +50,10 @@ export class ItemController {
   @Patch(':id/pricing/reset')
   resetPricing(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.itemService.resetPricing(id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.itemService.deleteItem(id);
   }
 }
