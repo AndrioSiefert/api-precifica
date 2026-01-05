@@ -1,6 +1,6 @@
 import { Body, Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { PurchaseCaptureService } from './purchase-capture.service';
-import { FinalizePurchaseCaptureDto } from './finalize-purchase-capture.dto';
+import { FinalizePurchaseCaptureDto } from './dto/finalize-purchase-capture.dto';
 
 @Controller('purchase-captures')
 export class PurchaseCaptureActionsController {

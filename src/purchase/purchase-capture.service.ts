@@ -4,7 +4,7 @@ import { MinioService } from '../storage/minio.service';
 import { PurchaseBatchRepository } from './purchase-batch.repository';
 import { PurchaseCaptureRepository } from './purchase-capture.repository';
 import { PurchaseCaptureEntity } from './purchase-capture.entity';
-import { FinalizePurchaseCaptureDto } from './finalize-purchase-capture.dto';
+import { FinalizePurchaseCaptureDto } from './dto/finalize-purchase-capture.dto';
 import { ItemRepository } from '../item/item.repository';
 import { ItemService } from '../item/item.service';
 
