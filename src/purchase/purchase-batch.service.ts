@@ -22,6 +22,12 @@ export class PurchaseBatchService{
         return this.repo.findAll();
     }
 
+    async findById(id: string){
+        const batch = await this.repo.findById(id)
+        if(!batch) throw new NotFoundException('Batch not found')
+        return batch
+    }
+
     async update(id: string, dto: UpdatePurchaseBatchDto){
         const batch = await this.repo.findById(id)
         if (!batch) throw new NotFoundException('Batch not found')

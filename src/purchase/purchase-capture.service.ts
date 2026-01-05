@@ -69,14 +69,38 @@ export class PurchaseCaptureService {
     const capture = await this.captureRepo.findById(captureId);
     if (!capture) throw new NotFoundException('Foto (capture) não encontrada');
 
-    if (capture.status === 'finalized') {
-      throw new ConflictException('Essa foto já foi finalizada');
-    }
-
     const batch = await this.batchRepo.findById(capture.batchId);
     if (!batch) throw new NotFoundException('Compra (lote) não encontrada');
 
     const purchasedAt = new Date(`${batch.purchasedOn}T12:00:00.000Z`);
+
+    // Se já finalizada, atualiza o item associado em vez de bloquear
+    if (capture.status === 'finalized' && capture.itemId) {
+      const existingItem = await this.itemRepo.findById(capture.itemId);
+      if (!existingItem) {
+        throw new ConflictException('Essa foto está finalizada, mas o item não foi encontrado');
+      }
+
+      existingItem.name = dto.name;
+      existingItem.costUnit = dto.costUnit;
+      existingItem.quantity = dto.quantity;
+      existingItem.markupOverridePercent = dto.markupOverridePercent ?? null;
+      existingItem.saleUnitManual = dto.saleUnitManual ?? null;
+      existingItem.purchasedAt = purchasedAt;
+
+      this.itemService.applyPricingMode(existingItem, dto.updatedField);
+
+      const savedItem = await this.itemRepo.save(existingItem);
+
+      return {
+        capture: await this.toResponse(capture),
+        item: await this.itemService.toResponse(savedItem),
+      };
+    }
+
+    if (capture.status === 'finalized') {
+      throw new ConflictException('Essa foto já foi finalizada');
+    }
 
     const item = this.itemRepo.create({
       name: dto.name,

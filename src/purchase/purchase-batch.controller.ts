@@ -19,6 +19,11 @@ export class PurchaseBatchController {
         return this.service.findAll()
     }
 
+    @Get(':id')
+    findById(@Param('id', new ParseUUIDPipe()) id: string){
+        return this.service.findById(id)
+    }
+
     @Patch(':id')
     update(
         @Param('id', new  ParseUUIDPipe()) id: string, 
