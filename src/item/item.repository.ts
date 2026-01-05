@@ -14,7 +14,7 @@ export class ItemRepository {
     return this.repo.create(data);
   }
 
-  save(item: ItemEntity) {
+  save(item: ItemEntity) {  
     return this.repo.save(item);
   }
 
@@ -24,5 +24,12 @@ export class ItemRepository {
 
   findById(id: string) {
     return this.repo.findOne({ where: { id } });
+  }
+
+  findByBatchId(batchId: string){
+    return this.repo.find({
+      where: {batchId},
+      order: {createdAt: 'ASC'}
+    })
   }
 }
