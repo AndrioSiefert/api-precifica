@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { CreatePurchaseBatchDto } from "./create-purchase-batch.dto";
+import { CreatePurchaseBatchDto } from "./dto/create-purchase-batch.dto";
 import { PurchaseBatchRepository } from "./purchase-batch.repository";
-import { UpdatePurchaseBatchDto } from "./update-purchase-batch.dto";
+import { UpdatePurchaseBatchDto } from "./dto/update-purchase-batch.dto";
 
 @Injectable()
 export class PurchaseBatchService{
